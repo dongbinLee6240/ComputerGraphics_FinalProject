@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+        <link rel="stylesheet" href="./style2.css">
+		<style>
+			body { margin: 0; }
+			canvas { display: block; }
+		</style>
+	</head>
+	<body>
+        <audio id="myAudio" class="righttop" autoplay loop controls onload="this.play()">
+            <source src="suika-game.mp3" type="audio/mp3">
+        </audio>
+        <button class="btn">재시도?</button>
+        <div id="score"></div>
+		<script type="module">
+			import * as THREE from 'https://unpkg.com/three/build/three.module.js';
+
+             const scene = new THREE.Scene();
+             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+             const renderer = new THREE.WebGLRenderer();
+             renderer.setSize(window.innerWidth, window.innerHeight);
+             document.body.appendChild(renderer.domElement);
+
+             const textureLoader = new THREE.TextureLoader();
+             const backgroundImage = textureLoader.load('https://www.shutterstock.com/image-vector/mountains-clouds-dusty-pastel-colors-600nw-2148908519.jpg');
+             scene.background = backgroundImage;
+
+             window.addEventListener('resize', () => {
+             const newAspectRatio = window.innerWidth / window.innerHeight;
+             camera.aspect = newAspectRatio;
+             camera.updateProjectionMatrix();
+             renderer.setSize(window.innerWidth, window.innerHeight);
+           });
+
+           
+let animatedShapes = [];
+let allowKeyPress = true;
+let score = 0;
+
+// 키보드 이벤트 리스너 추가
+document.addEventListener('keydown', onDocumentKeyDown, false);
+
+function onDocumentKeyDown(event) {
+  if (!allowKeyPress) return;
+
+  const keyCode = event.code;
+  for (const polyhedron of animatedShapes) {
+    if (polyhedron.position.y <= -2.5) continue;
+    switch (keyCode) {
+      case 'ArrowLeft':
+        polyhedron.position.x -= 0.1; // 왼쪽으로 이동
+        break;
+      case 'ArrowRight':
+        polyhedron.position.x += 0.1; // 오른쪽으로 이동
+        break;
+      case 'Space':
+        allowKeyPress = false; // 키 입력 불가능으로 설정
+        animateFall(polyhedron); // polyhedron 인자 추가
+        break;
+    }
+  }
+}
+
+function animateFall(polyhedron) {
+  if (polyhedron.position.y > -2.5) {
+    polyhedron.position.y -= 0.2;
+    requestAnimationFrame(() => animateFall(polyhedron));
+  } else {
+    allowKeyPress = true; // 다시 키 입력 가능하도록 설정
+    prepareNextPolyhedron();
+  }
+}
+
+function prepareNextPolyhedron() {
+  const existingPolyhedron = animatedShapes.find(
+    polyhedron => polyhedron.position.y > -2.5
+  );
+
+  const polyhedronTypes = [
+  new THREE.BoxGeometry(1, 1, 1), // 6면체
+  new THREE.OctahedronGeometry(1), // 8면체
+  new THREE.DodecahedronGeometry(1), // 12면체
+  new THREE.IcosahedronGeometry(1) // 20면체
+];
+
+  if (existingPolyhedron) {
+    // 기존 입체도형 업데이트
+    const randomIndex = Math.floor(Math.random() * polyhedronTypes.length);
+    existingPolyhedron.geometry = polyhedronTypes[randomIndex];
+    existingPolyhedron.material = new THREE.MeshBasicMaterial({ color: getRandomColor() });
+  } else {
+    // 빈 공간에 새로운 입체도형 추가
+    const randomIndex = Math.floor(Math.random() * polyhedronTypes.length);
+    addPolyhedron(polyhedronTypes[randomIndex], new THREE.MeshBasicMaterial({ color: getRandomColor() }), new THREE.Vector3(0, 4, 0));
+  }
+}
+
+function getRandomColor() {
+    return Math.random() * 0xffffff;
+}
+
+camera.position.z = 6;
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+
+    function createMesh(geometry, material, position) {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.copy(position);
+        scene.add(mesh);
+        return mesh;
+    }
+
+    function addPolyhedron(geometry, material, position) {
+        const polyhedron = createMesh(geometry, material, position);
+        addEdges(polyhedron);
+        animatedShapes.push(polyhedron);
+    }
+
+    function addEdges(mesh) {
+    // 기존의 윤곽선이 있으면 제거합니다.
+    const existingOutline = mesh.getObjectByName('outline');
+    if (existingOutline) {
+        mesh.remove(existingOutline);
+    }
+
+    // 새로운 윤곽선을 추가합니다.
+    const edges = new THREE.EdgesGeometry(mesh.geometry);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+    line.name = 'outline';
+    line.isOutline = true;
+    mesh.add(line);
+}
+
+function restartGame() {
+  // 현재 씬에서 모든 입체 도형 제거
+  animatedShapes.forEach(shape => {
+    scene.remove(shape);
+  });
+
+  // 배열 초기화
+  animatedShapes = [];
+  // 점수 초기화
+  score = 0;
+  // 게임 시작 지점에 초기 입체 도형 추가
+  const initialGeometry = new THREE.BoxGeometry(1, 1, 1);
+  const initialMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  addPolyhedron(initialGeometry, initialMaterial, new THREE.Vector3(0, 4, 0));
+
+  // 게임 재시작
+  animate();
+}
+
+    function checkCollision() {
+  const polyhedra = animatedShapes.filter(obj => obj.type === 'Mesh');
+
+  for (let i = 0; i < polyhedra.length; i++) {
+    const polyhedron=polyhedra[i];
+    if (polyhedron.position.y >= 5) {
+          // y 좌표가 5 이상인 경우 입체 도형 삭제
+          removePolyhedron(polyhedron);
+          continue;
+        }
+    for (let j = i + 1; j < polyhedra.length; j++) {
+      const polyhedron1 = polyhedra[i];
+      const polyhedron2 = polyhedra[j];
+
+      // 모든 경우의 충돌 감지
+      const distance = polyhedron1.position.distanceTo(polyhedron2.position);
+      const collisionDistance = 1;
+
+      if (distance < collisionDistance) {
+        console.log("충돌 감지");
+
+        // 점수 계산
+        const type1 = polyhedron1.geometry.type;
+        const type2 = polyhedron2.geometry.type;
+        const scoreIncrease = getScore(type1, type2);
+        score += scoreIncrease;
+
+        // 겹침 방지 로직 추가
+        if (polyhedron1.position.y < polyhedron2.position.y) {
+          polyhedron1.position.y += 1; // polyhedron1이 더 낮으면 위로 1칸 이동
+        } else {
+          polyhedron2.position.y += 1; // polyhedron2이 더 낮으면 위로 1칸 이동
+        }
+
+        return; // 첫 번째 충돌만 감지하도록 수정
+      }
+    }
+  }
+}
+
+// 충돌 점수 계산 함수
+function getScore(type1, type2) {
+  if (type1 === "BoxGeometry" && type2 === "BoxGeometry") {
+    return 2;
+  } else if (type1 === "OctahedronGeometry" && type2 === "OctahedronGeometry") {
+    return 100;
+  } else if (type1 === "DodecahedronGeometry" && type2 === "DodecahedronGeometry") {
+    return 1000;
+  } else if (type1 === "IcosahedronGeometry" && type2 === "IcosahedronGeometry") {
+    return 10000;
+  } else {
+    return 0;
+  }
+}
+        
+function animate() {
+        requestAnimationFrame(animate);
+
+        checkCollision();
+
+        // 점수 표시
+  document.getElementById("score").innerHTML = score;
+  
+// animatedShapes 배열에서 position.y 값이 5 이상인 입체도형을 모두 제거합니다.
+const removedShapes = animatedShapes.filter(polyhedron => polyhedron.position.y >= 5);
+        for (const polyhedron of removedShapes) {
+          scene.remove(polyhedron);
+        }
+
+animatedShapes = animatedShapes.filter(polyhedron => polyhedron.position.y < 5);
+        renderer.render(scene, camera);
+    }
+
+    const initialGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const initialMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    addPolyhedron(initialGeometry, initialMaterial, new THREE.Vector3(0, 4, 0));
+    
+    animate();
+    const btn = document.querySelector('.btn');
+btn.addEventListener('click', () => {
+  restartGame();
+            });
+		</script>
+	</body>
+</html>

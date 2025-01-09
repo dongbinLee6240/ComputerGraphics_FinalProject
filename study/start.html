@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+        <link rel="stylesheet" href="./style.css">
+		<style>
+			body { margin: 0; }
+			canvas { display: block; }
+		</style>
+	</head>
+	<body>
+        <audio id="myAudio" class="righttop" autoplay loop controls onload="this.play()">
+            <source src="SpongeBob SquarePants Production Music - The Rake Hornpipe.mp3" type="audio/mp3">
+        </audio>
+
+        <button class="btn">회전속도 증가</button>
+        <button class="btn2">회전속도 감소</button>
+        <button class="btn3">4면체 추가</button>
+        <button class="btn4">진짜 게임 시작</button>
+
+        <img src="Black and Green Simple Modern Squares Technology Logo.png" style="position: absolute; left: 50px; bottom: 150px;">
+
+		<script type="module">
+			import * as THREE from 'https://unpkg.com/three/build/three.module.js';
+
+             const scene = new THREE.Scene();
+             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+             const renderer = new THREE.WebGLRenderer();
+             renderer.setSize(window.innerWidth, window.innerHeight);
+             document.body.appendChild(renderer.domElement);
+
+             const textureLoader = new THREE.TextureLoader();
+             const backgroundImage = textureLoader.load('https://img.lovepik.com/free-png/20210919/lovepik-abstract-geometric-background-png-image_400542276_wh1200.png');
+             scene.background = backgroundImage;
+
+             window.addEventListener('resize', () => {
+             const newAspectRatio = window.innerWidth / window.innerHeight;
+             camera.aspect = newAspectRatio;
+             camera.updateProjectionMatrix();
+             renderer.setSize(window.innerWidth, window.innerHeight);
+           });
+
+// 정6면체
+const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+scene.add(cube);
+
+//윤곽선
+function addEdges(mesh) {
+    const edges = new THREE.EdgesGeometry(mesh.geometry);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }));
+    line.isOutline=true;
+    mesh.add(line);
+}
+
+addEdges(cube);
+
+const animatedShapes=[];
+
+// 4면체
+const tetrahedronGeometry = new THREE.BufferGeometry();
+const tetrahedronVertices = new Float32Array([
+    1, 1, 1,   // A
+   -1, -1, 1,  // B
+   -1, 1, -1,  // C
+    1, -1, -1   // D
+]);
+tetrahedronGeometry.setAttribute('position', new THREE.BufferAttribute(tetrahedronVertices, 3));
+
+const tetrahedronMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const tetrahedron = new THREE.Mesh(tetrahedronGeometry, tetrahedronMaterial);
+
+scene.add(tetrahedron);
+addEdges(tetrahedron);
+animatedShapes.push(tetrahedron);
+
+function addTetrahedron() {
+    const newTetrahedronGeometry = new THREE.BufferGeometry();
+    const newTetrahedronVertices = new Float32Array([
+        1, 1, 1,   // A
+       -1, -1, 1,  // B
+       -1, 1, -1,  // C
+        1, -1, -1   // D
+    ]);
+    newTetrahedronGeometry.setAttribute('position', new THREE.BufferAttribute(newTetrahedronVertices, 3));
+
+    const newTetrahedronMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const newTetrahedron = new THREE.Mesh(newTetrahedronGeometry, newTetrahedronMaterial);
+
+    // Set the position of the new tetrahedron to the center and below
+    newTetrahedron.position.set(0, -3, 0);
+    
+    scene.add(newTetrahedron);
+    addEdges(newTetrahedron);
+    animatedShapes.push(newTetrahedron);
+}
+// 8면체
+const octahedronGeometry = new THREE.OctahedronGeometry(1);
+const octahedronMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+const octahedron = new THREE.Mesh(octahedronGeometry, octahedronMaterial);
+octahedron.position.x = 3;
+scene.add(octahedron);
+
+addEdges(octahedron);
+animatedShapes.push(octahedron);
+
+// 20면체
+const icosahedronGeometry = new THREE.IcosahedronGeometry(1);
+const icosahedronMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+const icosahedron = new THREE.Mesh(icosahedronGeometry, icosahedronMaterial);
+icosahedron.position.y = 3;
+scene.add(icosahedron);
+
+addEdges(icosahedron);
+animatedShapes.push(icosahedron);
+
+// 12면체
+const dodecahedronGeometry = new THREE.DodecahedronGeometry(1);
+const dodecahedronMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+const dodecahedron = new THREE.Mesh(dodecahedronGeometry, dodecahedronMaterial);
+dodecahedron.position.x = -3;
+dodecahedron.position.y = 3;
+scene.add(dodecahedron);
+
+addEdges(dodecahedron);
+animatedShapes.push(dodecahedron);
+camera.position.z = 6;
+
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+let selectedObject = null;
+
+            function onMouseDown(event) {
+                event.preventDefault();
+
+                const intersects = getIntersects(event.clientX, event.clientY);
+                if (intersects.length > 0) {
+                    selectedObject = intersects[0].object;
+                }
+            }
+
+            function onMouseMove(event) {
+                event.preventDefault();
+
+                if (selectedObject) {
+                    const intersects = getIntersects(event.clientX, event.clientY);
+                    if (intersects.length > 0) {
+                        const intersect = intersects[0];
+                        const newPosition = intersect.point.clone();
+                        selectedObject.position.x=newPosition.x;
+                        selectedObject.position.y=newPosition.y;
+                    }
+                }
+            }
+
+            function onMouseUp(event) {
+                event.preventDefault();
+                selectedObject = null;
+            }
+
+            function getIntersects(x, y) {
+    const mousePosition = new THREE.Vector2();
+    mousePosition.x = (x / window.innerWidth) * 2 - 1;
+    mousePosition.y = -(y / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mousePosition, camera);
+    const clickableObjects = scene.children.filter(obj => obj.type === 'Mesh' && !obj.isOutline);
+
+     // Initialize intersects to an empty array
+     const intersects = raycaster.intersectObjects(clickableObjects, true) || [];
+
+    //윤곽선 필터링
+    const filteredIntersects = intersects.filter(intersect => !intersect.object.isOutline);
+
+return filteredIntersects;
+
+}
+
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+function animate() {
+    requestAnimationFrame(animate);
+    cube.rotation.x += 0.01;
+    cube.rotation.z += 0.01;
+
+    tetrahedron.rotation.x -= 0.02;
+    tetrahedron.rotation.z += 0.01;
+
+    octahedron.rotation.z += 0.02;
+
+    icosahedron.rotation.x += 0.01;
+    icosahedron.rotation.z += 0.01;
+
+    dodecahedron.rotation.z -= 0.01;
+    checkCollision();
+    renderer.render(scene, camera);
+}
+
+function reverseanimate(){
+    requestAnimationFrame(reverseanimate);
+    cube.rotation.x -=0.01;
+    cube.rotation.z-=0.01;
+
+    tetrahedron.rotation.x+=0.02;
+    tetrahedron.rotation.z-=0.01;
+
+    octahedron.rotation.z -=0.01;
+
+    icosahedron.rotation.x -=0.01;
+    icosahedron.rotation.z-=0.01;
+
+    dodecahedron.rotation.z+=0.01;
+    checkCollision();
+    renderer.render(scene, camera);
+}
+
+function checkCollision(){
+    const tetrahedra = animatedShapes.filter(obj=>obj.type==='Mesh'&&obj.geometry.type==='BufferGeometry');
+    const hexahedra=animatedShapes.filter(obj=>obj.type==='Mesh'&&obj.geometry.type==='BoxGeometry');
+
+    for(let i=0; i<tetrahedra.length;i++){
+        for(let j=i+1;j<tetrahedra.length;j++){
+            const tetrahedron1=tetrahedra[i];
+            const tetrahedron2=tetrahedra[j];
+
+            const distance = tetrahedron1.position.distanceTo(tetrahedron2.position);
+            const collisionDistance=0.5; 
+
+            if(distance< collisionDistance){
+                console.log("충돌 감지1");
+
+                //충돌 4면체 삭제
+                scene.remove(tetrahedron1);
+                scene.remove(tetrahedron2);
+
+                animatedShapes.splice(animatedShapes.indexOf(tetrahedron1), 1);
+                animatedShapes.splice(animatedShapes.indexOf(tetrahedron2), 1);
+
+                //6면체 추가
+                addHexahedron(tetrahedron1.position.clone());
+
+                return;
+
+            }
+
+        }
+    }
+
+    for(let i=0; i<hexahedra.length;i++){
+        for(let j=i+1;j<hexahedra.length;j++){
+            const hexahedron1=hexahedra[i];
+            const hexahedron2=hexahedra[j];
+
+            const distance1=hexahedron1.position.distanceTo(hexahedron2.position);
+            const collisionDistance1=2;
+
+            if(distance1<collisionDistance1){
+                console.log("충돌 감지2");
+
+                //충동6면체 삭제
+                scene.remove(hexahedron1);
+                scene.remove(hexahedron2);
+
+                animatedShapes.splice(animatedShapes.indexOf(hexahedron1), 2);
+                animatedShapes.splice(animatedShapes.indexOf(hexahedron2), 2);
+
+                addOctahedron(hexahedron1.position.clone());
+
+                return;
+
+            }
+        }
+    }
+}
+
+function getRandomColor() {
+    return Math.random() * 0xffffff;
+}
+
+function createMesh(geometry, material, position) {
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(position);
+            scene.add(mesh);
+            return mesh;
+        }
+        
+function addHexahedron(position) {
+            const hexahedronGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const hexahedronMaterial = new THREE.MeshBasicMaterial({ color: getRandomColor() });
+            const hexahedron = createMesh(hexahedronGeometry, hexahedronMaterial, position);
+            addEdges(hexahedron);
+            console.log("6면체 추가");
+            animatedShapes.push(hexahedron);
+        }
+function addOctahedron(position){
+    const octahedron1Geometry= new THREE.OctahedronGeometry(1);
+    const octahedron1Material=new THREE.MeshBasicMaterial({color:0xFFE4E1});
+    const octahedron1=new THREE.Mesh(octahedron1Geometry,octahedron1Material,position.clone());
+    addEdges(octahedron1);
+    console.log("8면체 추가");
+    animatedShapes.push(octahedron1);
+}
+const btn = document.querySelector('.btn');
+btn.addEventListener('click', () => {
+                animate();
+            });
+const btn2 = document.querySelector('.btn2');
+btn2.addEventListener('click',()=>{
+    reverseanimate();
+});
+const btn3 = document.querySelector('.btn3');
+            btn3.addEventListener('click', () => {
+                addTetrahedron();
+            });
+const btn4 = document.querySelector('.btn4');
+btn4.addEventListener('click',()=>{
+window.open('new_window.html', '_blank');
+});
+
+function stopAudio() {
+                const audioElement = document.getElementById('myAudio');
+                audioElement.pause();
+            }
+
+            function stopAudioAndOpenNewWindow() {
+                stopAudio();
+                window.open('new_window.html', '_blank');
+            }
+animate();
+		</script>
+	</body>
+</html>
